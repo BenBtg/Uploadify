@@ -5,15 +5,19 @@ using System.Collections.Concurrent;
 
 namespace VoiceVaultAPI.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api")]
     [ApiController]
     public class VoiceVaultController : ControllerBase
     {
-        [ApiController]
-        public class FileUploadController : ControllerBase
-        {
             private static readonly ConcurrentDictionary<string, MemoryStream> FileStreams = new ConcurrentDictionary<string, MemoryStream>();
 
+            /// <summary>
+            /// Uploads a chunk of a file.
+            /// </summary>
+            /// <param name="chunk">The file chunk to upload.</param>
+            /// <param name="fileName">The name of the file being uploaded.</param>
+            /// <param name="chunkNumber">The chunk number of the file.</param>
+            /// <returns>An IActionResult indicating the result of the upload.</returns>
             [HttpPost("upload")]
             public async Task<IActionResult> Upload([FromForm] IFormFile chunk, [FromForm] string fileName, [FromForm] int chunkNumber)
             {
@@ -47,5 +51,4 @@ namespace VoiceVaultAPI.Controllers
                 return BadRequest("File not found.");
             }
         }
-    }
 }

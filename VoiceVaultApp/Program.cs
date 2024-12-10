@@ -15,8 +15,8 @@ namespace VoiceVaultAPI.Client
             new Random().NextBytes(tempFileContent);
             File.WriteAllBytes(tempFilePath, tempFileContent);
 
-            var apiUrl = "https://localhost:7012/api/VoiceVault/upload";
-            var completeUrl = "https://localhost:7012/api/VoiceVault/complete";
+            var apiUrl = "http://localhost:5171/api/upload";
+            var completeUrl = "http://localhost:5171/api/complete";
             var chunkSize = 1024 * 1024; // 1 MB
 
             var fileName = Path.GetFileName(tempFilePath);
