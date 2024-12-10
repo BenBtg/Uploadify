@@ -1,6 +1,6 @@
 ﻿using Foundation;
 
-namespace Plugin.Maui.Audio.Sample;
+namespace VoiceVault.Maui;
 
 [Register("AppDelegate")]
 public class AppDelegate : MauiUIApplicationDelegate

@@ -2,7 +2,7 @@
 using Microsoft.Maui;
 using Microsoft.Maui.Hosting;
 
-namespace Plugin.Maui.Audio.Sample;
+namespace VoiceVault.Maui;
 
 class Program : MauiApplication
 {

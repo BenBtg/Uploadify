@@ -1,9 +1,9 @@
-﻿using Plugin.Maui.Audio.Sample.Pages;
-using Plugin.Maui.Audio.Sample.ViewModels;
+﻿using VoiceVault.Maui.Pages;
+using VoiceVault.Maui.ViewModels;
 using Plugin.Maui.Audio;
 using SkiaSharp.Views.Maui.Controls.Hosting;
 
-namespace Plugin.Maui.Audio.Sample;
+namespace VoiceVault.Maui;
 
 public static class MauiProgram
 {

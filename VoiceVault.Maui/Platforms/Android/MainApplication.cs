@@ -1,7 +1,7 @@
 ﻿using Android.App;
 using Android.Runtime;
 
-namespace Plugin.Maui.Audio.Sample;
+namespace VoiceVault.Maui;
 
 [Application]
 public class MainApplication : MauiApplication

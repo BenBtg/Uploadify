@@ -1,4 +1,4 @@
-﻿namespace Plugin.Maui.Audio.Sample.Pages;
+﻿namespace VoiceVault.Maui.Pages;
 
 public partial class AudioRecorderPage : ContentPage
 {

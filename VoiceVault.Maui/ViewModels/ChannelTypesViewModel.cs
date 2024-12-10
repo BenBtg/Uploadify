@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Plugin.Maui.Audio.Sample.ViewModels;
+namespace VoiceVault.Maui.ViewModels;
 
 public class ChannelTypesViewModel
 {

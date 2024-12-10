@@ -1,7 +1,7 @@
 ﻿using ObjCRuntime;
 using UIKit;
 
-namespace Plugin.Maui.Audio.Sample;
+namespace VoiceVault.Maui;
 
 public class Program
 {

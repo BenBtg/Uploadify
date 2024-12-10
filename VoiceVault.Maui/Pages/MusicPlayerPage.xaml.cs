@@ -1,6 +1,6 @@
-﻿using Plugin.Maui.Audio.Sample.ViewModels;
+﻿using VoiceVault.Maui.ViewModels;
 
-namespace Plugin.Maui.Audio.Sample.Pages;
+namespace VoiceVault.Maui.Pages;
 
 public partial class MusicPlayerPage : ContentPage
 {

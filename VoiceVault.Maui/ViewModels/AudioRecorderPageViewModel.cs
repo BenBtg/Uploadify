@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using static Microsoft.Maui.ApplicationModel.Permissions;
 
-namespace Plugin.Maui.Audio.Sample.ViewModels;
+namespace VoiceVault.Maui.ViewModels;
 
 public class AudioRecorderPageViewModel : BaseViewModel
 {

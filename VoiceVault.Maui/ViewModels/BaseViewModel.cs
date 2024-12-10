@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using static Microsoft.Maui.ApplicationModel.Permissions;
 
-namespace Plugin.Maui.Audio.Sample.ViewModels;
+namespace VoiceVault.Maui.ViewModels;
 
 public class BaseViewModel : INotifyPropertyChanged
 {

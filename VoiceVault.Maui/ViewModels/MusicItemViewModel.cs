@@ -1,4 +1,4 @@
-﻿namespace Plugin.Maui.Audio.Sample.ViewModels;
+﻿namespace VoiceVault.Maui.ViewModels;
 
 public class MusicItemViewModel : BaseViewModel
 {

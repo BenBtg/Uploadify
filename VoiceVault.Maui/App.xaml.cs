@@ -1,4 +1,4 @@
-﻿namespace Plugin.Maui.Audio.Sample;
+﻿namespace VoiceVault.Maui;
 
 public partial class App : Application
 {
