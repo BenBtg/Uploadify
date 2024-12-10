@@ -8,43 +8,62 @@ namespace VoiceVaultAPI.Client
 {
     class Program
     {
-        private static readonly HttpClient client = new HttpClient();
-
         static async Task Main(string[] args)
         {
-            if (args.Length == 0)
-            {
-                Console.WriteLine("Please provide the file path as an argument.");
-                return;
-            }
+            var tempFilePath = Path.GetTempFileName();
+            var tempFileContent = new byte[10 * 1024 * 1024]; // 10 MB file
+            new Random().NextBytes(tempFileContent);
+            File.WriteAllBytes(tempFilePath, tempFileContent);
 
-            var filePath = args[0];
-            if (!File.Exists(filePath))
-            {
-                Console.WriteLine("File not found.");
-                return;
-            }
+            var apiUrl = "https://localhost:7012/api/VoiceVault/upload";
+            var completeUrl = "https://localhost:7012/api/VoiceVault/complete";
+            var chunkSize = 1024 * 1024; // 1 MB
 
-            var result = await UploadFileAsync(filePath);
-            Console.WriteLine(result);
-        }
+            var fileName = Path.GetFileName(tempFilePath);
+            var totalChunks = (int)Math.Ceiling((double)new FileInfo(tempFilePath).Length / chunkSize);
 
-        private static async Task<string> UploadFileAsync(string filePath)
-        {
-            using var content = new MultipartFormDataContent();
-            using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
-            using var fileContent = new StreamContent(fileStream);
-            fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data");
-            content.Add(fileContent, "file", Path.GetFileName(filePath));
+            using (var httpClient = new HttpClient())
+            {
+                for (int chunkNumber = 1; chunkNumber <= totalChunks; chunkNumber++)
+                {
+                    using (var fileStream = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read))
+                    {
+                        fileStream.Seek((chunkNumber - 1) * chunkSize, SeekOrigin.Begin);
+                        var buffer = new byte[chunkSize];
+                        var bytesRead = await fileStream.ReadAsync(buffer, 0, chunkSize);
 
-            var response = await client.PostAsync("https://yourapiurl.com/upload", content);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadAsStringAsync();
-            }
-            else
-            {
-                return $"Error: {response.StatusCode}";
+                        using (var content = new MultipartFormDataContent())
+                        {
+                            var chunkContent = new ByteArrayContent(buffer, 0, bytesRead);
+                            chunkContent.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data");
+                            content.Add(chunkContent, "chunk", fileName);
+                            content.Add(new StringContent(fileName), "fileName");
+                            content.Add(new StringContent(chunkNumber.ToString()), "chunkNumber");
+
+                            var response = await httpClient.PostAsync(apiUrl, content);
+                            if (!response.IsSuccessStatusCode)
+                            {
+                                Console.WriteLine($"Chunk {chunkNumber} upload failed: {response.ReasonPhrase}");
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                using (var content = new MultipartFormDataContent())
+                {
+                    content.Add(new StringContent(fileName), "fileName");
+
+                    var response = await httpClient.PostAsync(completeUrl, content);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine("File uploaded successfully (simulated).");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"File completion failed: {response.ReasonPhrase}");
+                    }
+                }
             }
         }
     }
