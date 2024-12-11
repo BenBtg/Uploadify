@@ -1,6 +1,7 @@
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace VoiceVault.Maui.Services
 {
@@ -11,6 +12,11 @@ namespace VoiceVault.Maui.Services
         private readonly string _completeUrl = "http://localhost:5171/api/complete";
         private readonly int _chunkSize = 1024 * 1024; // 1 MB
         private double _progress;
+
+        // New fields
+        private long _fileSize;
+        private Stopwatch _stopwatch;
+        private long _bytesUploaded;
 
         public UploadService(HttpClient httpClient)
         {
@@ -32,6 +38,23 @@ namespace VoiceVault.Maui.Services
 
         public event EventHandler ProgressChanged;
 
+        // New properties
+        public long FileSize => _fileSize;
+        public DateTime StartTime { get; private set; }
+        public TimeSpan ElapsedTime => _stopwatch?.Elapsed ?? TimeSpan.Zero;
+        public TimeSpan EstimatedTimeToCompletion
+        {
+            get
+            {
+                if (_bytesUploaded == 0 || _stopwatch.ElapsedMilliseconds == 0)
+                    return TimeSpan.Zero;
+
+                var totalSeconds = (_fileSize * ElapsedTime.TotalSeconds) / _bytesUploaded;
+                var remainingSeconds = totalSeconds - ElapsedTime.TotalSeconds;
+                return TimeSpan.FromSeconds(remainingSeconds);
+            }
+        }
+
         public async Task UploadFileAsync(Stream fileStream, string fileName)
         {
             if (fileStream == null)
@@ -40,8 +63,12 @@ namespace VoiceVault.Maui.Services
             if (string.IsNullOrEmpty(fileName))
                 throw new ArgumentException("File name must be provided.", nameof(fileName));
 
-            var totalLength = fileStream.Length;
-            var totalChunks = (int)Math.Ceiling((double)totalLength / _chunkSize);
+            _fileSize = fileStream.Length;
+            _bytesUploaded = 0;
+            StartTime = DateTime.Now;
+            _stopwatch = Stopwatch.StartNew();
+
+            var totalChunks = (int)Math.Ceiling((double)_fileSize / _chunkSize);
             var buffer = new byte[_chunkSize];
 
             for (int chunkNumber = 1; chunkNumber <= totalChunks; chunkNumber++)
@@ -50,7 +77,7 @@ namespace VoiceVault.Maui.Services
 
                 using var content = new MultipartFormDataContent();
                 using var chunkContent = new ByteArrayContent(buffer, 0, bytesRead);
-                chunkContent.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data");
+                chunkContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
 
                 content.Add(chunkContent, "chunk", fileName);
                 content.Add(new StringContent(fileName), "fileName");
@@ -59,9 +86,14 @@ namespace VoiceVault.Maui.Services
                 var response = await _httpClient.PostAsync(_apiUrl, content);
                 response.EnsureSuccessStatusCode();
 
+                _bytesUploaded += bytesRead;
+
                 // Update progress
-                Progress = ((double)fileStream.Position / totalLength);
+                Progress = ((double)_bytesUploaded / _fileSize);
+                ProgressChanged?.Invoke(this, EventArgs.Empty);
             }
+
+            _stopwatch.Stop();
 
             // Notify the server that the upload is complete
             var completeResponse = await _httpClient.PostAsync(_completeUrl, new StringContent(fileName));

@@ -14,7 +14,7 @@ namespace VoiceVault.Maui.ViewModels
         public MainViewModel(IUploadService uploadService)
         {
             _uploadService = uploadService;
-            _uploadService.ProgressChanged += (s, e) => Progress = _uploadService.Progress;
+            _uploadService.ProgressChanged += OnProgressChanged;
             UploadCommand = new Command(async () => await UploadFileAsync());
         }
 
@@ -27,9 +27,20 @@ namespace VoiceVault.Maui.ViewModels
                 {
                     _progress = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(ProgressDisplay));
+                    OnPropertyChanged(nameof(ElapsedTimeDisplay));
+                    OnPropertyChanged(nameof(EstimatedTimeDisplay));
                 }
             }
         }
+
+        public string ProgressDisplay => $"{Progress * 100:F0}% Completed";
+        public string FileSizeDisplay => $"{(_uploadService.FileSize / (1024.0 * 1024.0)):F2} MB";
+        public string StartTimeDisplay => _uploadService.StartTime.ToString("T");
+        public string ElapsedTimeDisplay => _uploadService.ElapsedTime.ToString(@"mm\:ss");
+        public string EstimatedTimeDisplay => _uploadService.EstimatedTimeToCompletion.TotalSeconds > 0
+            ? $"{_uploadService.EstimatedTimeToCompletion:mm\\:ss} remaining"
+            : "Calculating...";
 
         public ICommand UploadCommand { get; }
 
@@ -46,8 +57,17 @@ namespace VoiceVault.Maui.ViewModels
             }
             catch (Exception ex)
             {
-                // Handle exceptions (e.g., user cancels picking a file)
+                // Handle exceptions
             }
+        }
+
+        private void OnProgressChanged(object sender, EventArgs e)
+        {
+            Progress = _uploadService.Progress;
+            OnPropertyChanged(nameof(FileSizeDisplay));
+            OnPropertyChanged(nameof(StartTimeDisplay));
+            OnPropertyChanged(nameof(ElapsedTimeDisplay));
+            OnPropertyChanged(nameof(EstimatedTimeDisplay));
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

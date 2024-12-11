@@ -32,9 +32,14 @@
         </Style>
     </ContentPage.Resources>
 
-    <StackLayout Padding="20">
-
+    <StackLayout Padding="20" Spacing="10">
         <Label Text="File Upload" Style="{StaticResource TitleLabelStyle}"/>
+
+        <Label Text="{Binding FileSizeDisplay, StringFormat='File Size: {0}'}"
+               FontSize="16" TextColor="#555"/>
+
+        <Label Text="{Binding StartTimeDisplay, StringFormat='Started at: {0}'}"
+               FontSize="16" TextColor="#555"/>
 
         <ProgressBar Progress="{Binding Progress}"
                      Style="{StaticResource ProgressBarStyle}"/>
@@ -43,6 +48,12 @@
                FontSize="16"
                TextColor="#555"
                HorizontalOptions="Center"/>
+
+        <Label Text="{Binding ElapsedTimeDisplay, StringFormat='Elapsed Time: {0}'}"
+               FontSize="16" TextColor="#555"/>
+
+        <Label Text="{Binding EstimatedTimeDisplay}"
+               FontSize="16" TextColor="#555"/>
 
         <Button Text="Upload File"
                 Command="{Binding UploadCommand}"
