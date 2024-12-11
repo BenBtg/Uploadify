@@ -2,7 +2,7 @@ namespace VoiceVault.Maui.Services
 {
     public interface IUploadService
     {
-        Task UploadFileAsync(string filePath);
+        Task UploadFileAsync(Stream fileStream, string fileName);
         double Progress { get; }
         event EventHandler ProgressChanged;
     }

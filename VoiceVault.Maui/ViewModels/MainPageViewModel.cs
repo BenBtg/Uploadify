@@ -1,19 +1,20 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using Microsoft.Maui.Storage;
 using VoiceVault.Maui.Services;
 
 namespace VoiceVault.Maui.ViewModels
 {
-    public class MainPageViewModel : INotifyPropertyChanged
+    public class MainViewModel : INotifyPropertyChanged
     {
         private readonly IUploadService _uploadService;
         private double _progress;
 
-        public MainPageViewModel(IUploadService uploadService)
+        public MainViewModel(IUploadService uploadService)
         {
             _uploadService = uploadService;
-           // _uploadService.ProgressChanged += (s, e) => Progress = _uploadService.Progress;
+            _uploadService.ProgressChanged += (s, e) => Progress = _uploadService.Progress;
             UploadCommand = new Command(async () => await UploadFileAsync());
         }
 
@@ -22,8 +23,11 @@ namespace VoiceVault.Maui.ViewModels
             get => _progress;
             set
             {
-                _progress = value;
-                OnPropertyChanged();
+                if (Math.Abs(_progress - value) > 0.01)
+                {
+                    _progress = value;
+                    OnPropertyChanged();
+                }
             }
         }
 
@@ -31,15 +35,23 @@ namespace VoiceVault.Maui.ViewModels
 
         private async Task UploadFileAsync()
         {
-            var filePath = "path_to_your_file"; // Replace with actual file path
-            await _uploadService.UploadFileAsync(filePath);
+            try
+            {
+                var fileResult = await FilePicker.PickAsync();
+                if (fileResult != null)
+                {
+                    using var stream = await fileResult.OpenReadAsync();
+                    await _uploadService.UploadFileAsync(stream, fileResult.FileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions (e.g., user cancels picking a file)
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
-
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+        private void OnPropertyChanged([CallerMemberName] string propertyName = "")
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

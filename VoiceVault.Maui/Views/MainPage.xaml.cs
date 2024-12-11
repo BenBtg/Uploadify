@@ -4,7 +4,7 @@ namespace VoiceVault.Maui;
 
 public partial class MainPage : ContentPage
 {
-	public MainPage(MainPageViewModel viewModel)
+	public MainPage(MainViewModel viewModel)
 	{
 		InitializeComponent();
 

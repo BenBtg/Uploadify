@@ -22,7 +22,8 @@ public static class MauiProgram
 	 public static MauiAppBuilder RegisterServices(this MauiAppBuilder mauiAppBuilder)
     {
         //mauiAppBuilder.Services.AddTransient<ILoggingService, LoggingService>();
-        mauiAppBuilder.Services.AddTransient<IUploadService, UploadService>();
+        mauiAppBuilder.Services.AddSingleton<HttpClient>();
+        mauiAppBuilder.Services.AddSingleton<IUploadService, UploadService>();
 
 		#if DEBUG
 			mauiAppBuilder.Logging.AddDebug();
@@ -35,7 +36,7 @@ public static class MauiProgram
 
     public static MauiAppBuilder RegisterViewModels(this MauiAppBuilder mauiAppBuilder)
     {
-        mauiAppBuilder.Services.AddSingleton<MainPageViewModel>();
+        mauiAppBuilder.Services.AddSingleton<MainViewModel>();
 
         // More view-models registered here.
 

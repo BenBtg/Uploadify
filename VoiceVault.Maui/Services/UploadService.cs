@@ -22,43 +22,45 @@ namespace VoiceVault.Maui.Services
             get => _progress;
             private set
             {
-                _progress = value;
-                // Notify UI of progress change (if using data binding)
-                ProgressChanged?.Invoke(this, EventArgs.Empty);
+                if (Math.Abs(_progress - value) > 0.01)
+                {
+                    _progress = value;
+                    ProgressChanged?.Invoke(this, EventArgs.Empty);
+                }
             }
         }
 
         public event EventHandler ProgressChanged;
 
-        public async Task UploadFileAsync(string filePath)
+        public async Task UploadFileAsync(Stream fileStream, string fileName)
         {
-            var fileName = Path.GetFileName(filePath);
-            var totalChunks = (int)Math.Ceiling((double)new FileInfo(filePath).Length / _chunkSize);
+            if (fileStream == null)
+                throw new ArgumentNullException(nameof(fileStream));
+
+            if (string.IsNullOrEmpty(fileName))
+                throw new ArgumentException("File name must be provided.", nameof(fileName));
+
+            var totalLength = fileStream.Length;
+            var totalChunks = (int)Math.Ceiling((double)totalLength / _chunkSize);
+            var buffer = new byte[_chunkSize];
 
             for (int chunkNumber = 1; chunkNumber <= totalChunks; chunkNumber++)
             {
-                using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
-                {
-                    fileStream.Seek((chunkNumber - 1) * _chunkSize, SeekOrigin.Begin);
-                    var buffer = new byte[_chunkSize];
-                    var bytesRead = await fileStream.ReadAsync(buffer, 0, _chunkSize);
+                var bytesRead = await fileStream.ReadAsync(buffer, 0, _chunkSize);
 
-                    using (var content = new MultipartFormDataContent())
-                    {
-                        var chunkContent = new ByteArrayContent(buffer, 0, bytesRead);
-                        chunkContent.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data");
+                using var content = new MultipartFormDataContent();
+                using var chunkContent = new ByteArrayContent(buffer, 0, bytesRead);
+                chunkContent.Headers.ContentType = MediaTypeHeaderValue.Parse("multipart/form-data");
 
-                        content.Add(chunkContent, "chunk", fileName);
-                        content.Add(new StringContent(fileName), "fileName");
-                        content.Add(new StringContent(chunkNumber.ToString()), "chunkNumber");
+                content.Add(chunkContent, "chunk", fileName);
+                content.Add(new StringContent(fileName), "fileName");
+                content.Add(new StringContent(chunkNumber.ToString()), "chunkNumber");
 
-                        var response = await _httpClient.PostAsync(_apiUrl, content);
-                        response.EnsureSuccessStatusCode();
-                    }
-                }
+                var response = await _httpClient.PostAsync(_apiUrl, content);
+                response.EnsureSuccessStatusCode();
 
                 // Update progress
-                Progress = (double)chunkNumber / totalChunks * 100;
+                Progress = ((double)fileStream.Position / totalLength);
             }
 
             // Notify the server that the upload is complete
