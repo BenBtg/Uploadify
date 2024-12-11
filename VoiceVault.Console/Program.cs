@@ -45,7 +45,11 @@ namespace VoiceVaultAPI.Client
                             {
                                 Console.WriteLine($"Chunk {chunkNumber} upload failed: {response.ReasonPhrase}");
                                 return;
+                            } else
+                            {
+                                Console.WriteLine($"Chunk {chunkNumber} uploaded successfully.");
                             }
+
                         }
                     }
                 }

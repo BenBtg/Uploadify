@@ -1,0 +1,42 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VoiceVaultApp", "VoiceVault.Console\VoiceVaultApp.csproj", "{8D0BE12C-682B-390E-D04D-E63F67472D7B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VoiceVaultAPI", "VoiceVault.API\VoiceVaultAPI.csproj", "{18041F21-FE6D-B3E1-6E92-54EEE610CCBA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VoiceVault.Maui", "VoiceVault.Maui\VoiceVault.Maui.csproj", "{CD274ED6-C6B1-111C-BC15-53C0DD786859}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VoiceVaultAPI.Tests", "VoiceVaultAPI.Tests\VoiceVaultAPI.Tests.csproj", "{4D92B0D0-4C31-9A85-8EF5-084807B52150}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8D0BE12C-682B-390E-D04D-E63F67472D7B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D0BE12C-682B-390E-D04D-E63F67472D7B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D0BE12C-682B-390E-D04D-E63F67472D7B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D0BE12C-682B-390E-D04D-E63F67472D7B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{18041F21-FE6D-B3E1-6E92-54EEE610CCBA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{18041F21-FE6D-B3E1-6E92-54EEE610CCBA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{18041F21-FE6D-B3E1-6E92-54EEE610CCBA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{18041F21-FE6D-B3E1-6E92-54EEE610CCBA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CD274ED6-C6B1-111C-BC15-53C0DD786859}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD274ED6-C6B1-111C-BC15-53C0DD786859}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD274ED6-C6B1-111C-BC15-53C0DD786859}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD274ED6-C6B1-111C-BC15-53C0DD786859}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D92B0D0-4C31-9A85-8EF5-084807B52150}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D92B0D0-4C31-9A85-8EF5-084807B52150}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D92B0D0-4C31-9A85-8EF5-084807B52150}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D92B0D0-4C31-9A85-8EF5-084807B52150}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {76A336DE-3897-4156-B5A2-1458587CA5B4}
+	EndGlobalSection
+EndGlobal

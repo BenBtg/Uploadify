@@ -1,57 +1,55 @@
-﻿using VoiceVault.Maui.Pages;
-using VoiceVault.Maui.ViewModels;
-using Plugin.Maui.Audio;
-using SkiaSharp.Views.Maui.Controls.Hosting;
+﻿using Microsoft.Extensions.Logging;
+using VoiceVault.Maui.Services; // Add this line
 
 namespace VoiceVault.Maui;
 
 public static class MauiProgram
 {
 	public static MauiApp CreateMauiApp()
-	{
-		var builder = MauiApp.CreateBuilder();
-		builder
-			.UseMauiApp<App>()
-			.UseSkiaSharp()
-			.AddAudio(
-				playbackOptions =>
-				{
-#if IOS || MACCATALYST
-					playbackOptions.Category = AVFoundation.AVAudioSessionCategory.Playback;
-#endif
-				},
-				recordingOptions =>
-				{
-#if IOS || MACCATALYST
-					recordingOptions.Category = AVFoundation.AVAudioSessionCategory.Record;
-					recordingOptions.Mode = AVFoundation.AVAudioSessionMode.Default;
-					recordingOptions.CategoryOptions = AVFoundation.AVAudioSessionCategoryOptions.MixWithOthers;
-#endif
-				})
-			.ConfigureFonts(fonts =>
+		=> MauiApp.CreateBuilder()
+		.UseMauiApp<App>()
+		.ConfigureFonts(fonts =>
+		{
+			fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
+			fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+		})
+		.RegisterServices()
+		.RegisterViewModels()
+		.RegisterViews()
+		.Build();
+
+	 public static MauiAppBuilder RegisterServices(this MauiAppBuilder mauiAppBuilder)
+    {
+        //mauiAppBuilder.Services.AddTransient<ILoggingService, LoggingService>();
+        mauiAppBuilder.Services.AddTransient<IUploadService, UploadService>(client =>
 			{
-				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
-				fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+				client.BaseAddress = new Uri("https://localhost:5001/");
 			});
 
-		builder.Services.AddTransient<MyLibraryPage>();
-		builder.Services.AddTransient<MyLibraryPageViewModel>();
+		#if DEBUG
+			mauiAppBuilder.Logging.AddDebug();
+		#endif
 
-		RegisterPageRoute<AudioRecorderPage, AudioRecorderPageViewModel>(Routes.AudioRecorder.RouteName, builder.Services);
-		RegisterPageRoute<MusicPlayerPage, MusicPlayerPageViewModel>(Routes.MusicPlayer.RouteName, builder.Services);
+        // More services registered here.
 
-		return builder.Build();
-	}
+        return mauiAppBuilder;        
+    }
 
-	static void RegisterPageRoute<TPage, TPageViewModel>(
-		string route,
-		IServiceCollection services)
-		where TPage : ContentPage
-		where TPageViewModel : BaseViewModel
-	{
-		Routing.RegisterRoute(route, typeof(TPage));
+    public static MauiAppBuilder RegisterViewModels(this MauiAppBuilder mauiAppBuilder)
+    {
+        mauiAppBuilder.Services.AddSingleton<MainPageViewModel>();
 
-		services.AddTransient(typeof(TPage));
-		services.AddTransient(typeof(TPageViewModel));
-	}
+        // More view-models registered here.
+
+        return mauiAppBuilder;        
+    }
+
+    public static MauiAppBuilder RegisterViews(this MauiAppBuilder mauiAppBuilder)
+    {
+        mauiAppBuilder.Services.AddSingleton<MainPage>();
+
+        // More views registered here.
+
+        return mauiAppBuilder;        
+    }
 }

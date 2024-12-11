@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Plugin.Maui.Audio;
 using static Microsoft.Maui.ApplicationModel.Permissions;
 
 namespace VoiceVault.Maui.ViewModels;

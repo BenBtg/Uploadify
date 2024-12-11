@@ -1,4 +1,5 @@
-﻿namespace VoiceVault.Maui.ViewModels;
+﻿using Plugin.Maui.Audio;
+namespace VoiceVault.Maui.ViewModels;
 
 public class EncodingViewModel
 {
