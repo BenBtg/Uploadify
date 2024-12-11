@@ -1,15 +1,17 @@
+using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using Microsoft.Maui.Controls;
 
 namespace VoiceVault.Maui.Services
 {
     public class UploadService : IUploadService
     {
         private readonly HttpClient _httpClient;
-        private readonly string _apiUrl = "http://localhost:5171/api/upload";
-        private readonly string _completeUrl = "http://localhost:5171/api/complete";
+        private readonly string _apiUrl;
+        private readonly string _completeUrl;
         private readonly int _chunkSize = 1024 * 1024; // 1 MB
         private double _progress;
 
@@ -21,6 +23,17 @@ namespace VoiceVault.Maui.Services
         public UploadService(HttpClient httpClient)
         {
             _httpClient = httpClient;
+
+            // Determine the API base URL based on the platform
+        #if ANDROID
+            var baseAddress = "http://10.0.2.2:5171/";
+        #else
+            var baseAddress = "http://localhost:5171/";
+        #endif
+
+            _httpClient.BaseAddress = new Uri(baseAddress);
+            _apiUrl = "api/upload";
+            _completeUrl = "api/complete";
         }
 
         public double Progress
@@ -83,14 +96,23 @@ namespace VoiceVault.Maui.Services
                 content.Add(new StringContent(fileName), "fileName");
                 content.Add(new StringContent(chunkNumber.ToString()), "chunkNumber");
 
-                var response = await _httpClient.PostAsync(_apiUrl, content);
-                response.EnsureSuccessStatusCode();
+                try
+                {
+                    var response = await _httpClient.PostAsync(_apiUrl, content);
+                    response.EnsureSuccessStatusCode();
+                }
+                 catch (Exception ex)
+                {
+                    Debug.WriteLine($"Upload failed: {ex.Message}");
+                    // Handle exception (e.g., notify user, retry logic)
+                }
 
                 _bytesUploaded += bytesRead;
 
                 // Update progress
                 Progress = ((double)_bytesUploaded / _fileSize);
                 ProgressChanged?.Invoke(this, EventArgs.Empty);
+
             }
 
             _stopwatch.Stop();
