@@ -4,11 +4,6 @@
              xmlns:vm="clr-namespace:VoiceVault.Maui.ViewModels"
              x:Class="VoiceVault.Maui.MainPage">
 
-
-    <ContentPage.BindingContext>
-        <vm:UploadViewModel />
-    </ContentPage.BindingContext>
-
     <StackLayout Padding="10">
         <ProgressBar Progress="{Binding Progress}" />
         <Button Text="Upload File" Command="{Binding UploadCommand}" />

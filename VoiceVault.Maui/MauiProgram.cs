@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
-using VoiceVault.Maui.Services; // Add this line
+using VoiceVault.Maui.Services;
+using VoiceVault.Maui.ViewModels; // Add this line
 
 namespace VoiceVault.Maui;
 
@@ -21,10 +22,7 @@ public static class MauiProgram
 	 public static MauiAppBuilder RegisterServices(this MauiAppBuilder mauiAppBuilder)
     {
         //mauiAppBuilder.Services.AddTransient<ILoggingService, LoggingService>();
-        mauiAppBuilder.Services.AddTransient<IUploadService, UploadService>(client =>
-			{
-				client.BaseAddress = new Uri("https://localhost:5001/");
-			});
+        mauiAppBuilder.Services.AddTransient<IUploadService, UploadService>();
 
 		#if DEBUG
 			mauiAppBuilder.Logging.AddDebug();

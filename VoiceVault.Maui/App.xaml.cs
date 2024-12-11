@@ -2,9 +2,11 @@
 
 public partial class App : Application
 {
-	public App()
+	MainPage _mainPage;
+	public App(IServiceProvider serviceProvider)
 	{
 		InitializeComponent();
+		_mainPage = serviceProvider.GetService<MainPage>();
 	}
 
 	protected override Window CreateWindow(IActivationState? activationState)

@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using VoiceVaultAPI.Client;
+using VoiceVault.Maui.Services;
 
 namespace VoiceVault.Maui.ViewModels
 {
@@ -10,10 +10,10 @@ namespace VoiceVault.Maui.ViewModels
         private readonly IUploadService _uploadService;
         private double _progress;
 
-        public UploadViewModel(IUploadService uploadService)
+        public MainPageViewModel(IUploadService uploadService)
         {
             _uploadService = uploadService;
-            _uploadService.ProgressChanged += (s, e) => Progress = _uploadService.Progress;
+           // _uploadService.ProgressChanged += (s, e) => Progress = _uploadService.Progress;
             UploadCommand = new Command(async () => await UploadFileAsync());
         }
 
