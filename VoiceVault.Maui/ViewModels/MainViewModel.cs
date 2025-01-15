@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -10,12 +11,16 @@ namespace VoiceVault.Maui.ViewModels
     {
         private readonly IUploadService _uploadService;
         private double _progress;
+        private bool _isPaused;
+        private string _pauseResumeButtonText;
 
         public MainViewModel(IUploadService uploadService)
         {
             _uploadService = uploadService;
             _uploadService.ProgressChanged += OnProgressChanged;
             UploadCommand = new Command(async () => await UploadFileAsync());
+            PauseResumeCommand = new Command(PauseResumeUpload);
+            _pauseResumeButtonText = "Pause";
         }
 
         public double Progress
@@ -42,7 +47,18 @@ namespace VoiceVault.Maui.ViewModels
             ? $"{_uploadService.EstimatedTimeToCompletion:mm\\:ss} remaining"
             : "Calculating...";
 
+        public string PauseResumeButtonText
+        {
+            get => _pauseResumeButtonText;
+            set
+            {
+                _pauseResumeButtonText = value;
+                OnPropertyChanged();
+            }
+        }
+
         public ICommand UploadCommand { get; }
+        public ICommand PauseResumeCommand { get; }
 
         private async Task UploadFileAsync()
         {
@@ -59,6 +75,22 @@ namespace VoiceVault.Maui.ViewModels
             {
                 // Handle exceptions
             }
+        }
+
+        private void PauseResumeUpload()
+        {
+            if (_isPaused)
+            {
+                _uploadService.ResumeUpload();
+                PauseResumeButtonText = "Pause";
+            }
+            else
+            {
+                _uploadService.PauseUpload();
+                PauseResumeButtonText = "Resume";
+            }
+
+            _isPaused = !_isPaused;
         }
 
         private void OnProgressChanged(object sender, EventArgs e)

@@ -1,9 +1,12 @@
 using System;
+using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading;
 using System.Threading.Tasks;
-using System.Diagnostics;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Storage;
 
 namespace VoiceVault.Maui.Services
 {
@@ -19,6 +22,8 @@ namespace VoiceVault.Maui.Services
         private long _fileSize;
         private Stopwatch _stopwatch;
         private long _bytesUploaded;
+        private CancellationTokenSource _cancellationTokenSource;
+        private bool _isPaused;
 
         public UploadService(HttpClient httpClient)
         {
@@ -34,6 +39,7 @@ namespace VoiceVault.Maui.Services
             _httpClient.BaseAddress = new Uri(baseAddress);
             _apiUrl = "api/upload";
             _completeUrl = "api/complete";
+            _cancellationTokenSource = new CancellationTokenSource();
         }
 
         public double Progress
@@ -120,6 +126,89 @@ namespace VoiceVault.Maui.Services
             // Notify the server that the upload is complete
             var completeResponse = await _httpClient.PostAsync(_completeUrl, new StringContent(fileName));
             completeResponse.EnsureSuccessStatusCode();
+        }
+
+        public async Task UploadFileAsync(string filePath)
+        {
+            _fileSize = new FileInfo(filePath).Length;
+            _stopwatch = Stopwatch.StartNew();
+            _bytesUploaded = LoadUploadedBytes(filePath);
+            _isPaused = false;
+
+            using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                fileStream.Seek(_bytesUploaded, SeekOrigin.Begin);
+
+                while (_bytesUploaded < _fileSize)
+                {
+                    if (_isPaused)
+                    {
+                        await Task.Delay(100); // Wait for resume
+                        continue;
+                    }
+
+                    var buffer = new byte[_chunkSize];
+                    var bytesRead = await fileStream.ReadAsync(buffer, 0, buffer.Length, _cancellationTokenSource.Token);
+
+                    if (bytesRead == 0)
+                        break;
+
+                    var content = new MultipartFormDataContent();
+                    content.Add(new ByteArrayContent(buffer, 0, bytesRead), "file", Path.GetFileName(filePath));
+                    var response = await _httpClient.PostAsync(_apiUrl, content, _cancellationTokenSource.Token);
+
+                    if (!response.IsSuccessStatusCode)
+                        throw new Exception("Upload failed");
+
+                    _bytesUploaded += bytesRead;
+                    SaveUploadedBytes(filePath, _bytesUploaded);
+                    _progress = (double)_bytesUploaded / _fileSize;
+                }
+
+                _stopwatch.Stop();
+            }
+        }
+
+        public void PauseUpload()
+        {
+            _isPaused = true;
+        }
+
+        public void ResumeUpload()
+        {
+            _isPaused = false;
+        }
+
+        public void CancelUpload()
+        {
+            _cancellationTokenSource.Cancel();
+        }
+
+        public double GetProgress()
+        {
+            return _progress;
+        }
+
+        public TimeSpan GetElapsedTime()
+        {
+            return _stopwatch.Elapsed;
+        }
+
+        private void SaveUploadedBytes(string filePath, long bytesUploaded)
+        {
+            var key = GetPreferencesKey(filePath);
+            Preferences.Set(key, bytesUploaded);
+        }
+
+        private long LoadUploadedBytes(string filePath)
+        {
+            var key = GetPreferencesKey(filePath);
+            return Preferences.Get(key, 0L);
+        }
+
+        private string GetPreferencesKey(string filePath)
+        {
+            return $"upload_{Path.GetFileName(filePath)}_bytesUploaded";
         }
     }
 }
