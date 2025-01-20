@@ -9,10 +9,12 @@ namespace VoiceVault.Maui.Services
         double Progress { get; }
         event EventHandler ProgressChanged;
 
-        // New properties
         long FileSize { get; }
         DateTime StartTime { get; }
         TimeSpan ElapsedTime { get; }
         TimeSpan EstimatedTimeToCompletion { get; }
+
+        // Expose current chunk
+        int CurrentChunk { get; }
     }
 }

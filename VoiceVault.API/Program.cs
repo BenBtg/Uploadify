@@ -1,5 +1,8 @@
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Kestrel to listen on all interfaces and a specific port
+builder.WebHost.UseUrls("http://0.0.0.0:5171");
+
 // Add services to the container.
 
 builder.Services.AddControllers();

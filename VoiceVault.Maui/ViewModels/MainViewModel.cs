@@ -42,6 +42,7 @@ namespace VoiceVault.Maui.ViewModels
         public string ProgressDisplay => $"{Progress * 100:F0}% Completed";
         public string FileSizeDisplay => $"{(_uploadService.FileSize / (1024.0 * 1024.0)):F2} MB";
         public string StartTimeDisplay => _uploadService.StartTime.ToString("T");
+        public int CurrentChunk => _uploadService.CurrentChunk;
         public string ElapsedTimeDisplay => _uploadService.ElapsedTime.ToString(@"mm\:ss");
         public string EstimatedTimeDisplay => _uploadService.EstimatedTimeToCompletion.TotalSeconds > 0
             ? $"{_uploadService.EstimatedTimeToCompletion:mm\\:ss} remaining"
@@ -56,6 +57,8 @@ namespace VoiceVault.Maui.ViewModels
                 OnPropertyChanged();
             }
         }
+
+
 
         public ICommand UploadCommand { get; }
         public ICommand PauseResumeCommand { get; }
@@ -100,6 +103,9 @@ namespace VoiceVault.Maui.ViewModels
             OnPropertyChanged(nameof(StartTimeDisplay));
             OnPropertyChanged(nameof(ElapsedTimeDisplay));
             OnPropertyChanged(nameof(EstimatedTimeDisplay));
+            OnPropertyChanged(nameof(Progress));
+            OnPropertyChanged(nameof(ProgressDisplay));
+            OnPropertyChanged(nameof(CurrentChunk)); // Notify UI of CurrentChunk changes
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

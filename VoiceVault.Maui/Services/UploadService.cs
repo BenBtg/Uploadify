@@ -25,6 +25,9 @@ namespace VoiceVault.Maui.Services
         private CancellationTokenSource _cancellationTokenSource;
         private bool _isPaused;
 
+        // Expose current chunk as a property
+        public int CurrentChunk { get; private set; }
+
         public UploadService(HttpClient httpClient)
         {
             _httpClient = httpClient;
@@ -33,7 +36,7 @@ namespace VoiceVault.Maui.Services
         #if ANDROID
             var baseAddress = "http://10.0.2.2:5171/";
         #else
-            var baseAddress = "http://localhost:5171/";
+            var baseAddress = "http://10.0.0.188:5171/";
         #endif
 
             _httpClient.BaseAddress = new Uri(baseAddress);
@@ -82,25 +85,42 @@ namespace VoiceVault.Maui.Services
             if (string.IsNullOrEmpty(fileName))
                 throw new ArgumentException("File name must be provided.", nameof(fileName));
 
+            // Get total size from the stream
             _fileSize = fileStream.Length;
-            _bytesUploaded = 0;
-            StartTime = DateTime.Now;
             _stopwatch = Stopwatch.StartNew();
+            _bytesUploaded = LoadUploadedBytes(fileName); 
+            _isPaused = false;
 
-            var totalChunks = (int)Math.Ceiling((double)_fileSize / _chunkSize);
-            var buffer = new byte[_chunkSize];
+            // Reset the current chunk counter before starting
+            CurrentChunk = 0;
 
-            for (int chunkNumber = 1; chunkNumber <= totalChunks; chunkNumber++)
+            fileStream.Seek(_bytesUploaded, SeekOrigin.Begin);
+
+            while (_bytesUploaded < _fileSize)
             {
-                var bytesRead = await fileStream.ReadAsync(buffer, 0, _chunkSize);
+                // Stay in loop until ResumeUpload() is called 
+                while (_isPaused)
+                {
+                    await Task.Delay(100);
+                }
 
-                using var content = new MultipartFormDataContent();
+                var buffer = new byte[_chunkSize];
+                var bytesRead = await fileStream.ReadAsync(buffer, 0, buffer.Length, _cancellationTokenSource.Token);
+                if (bytesRead == 0)
+                    break;
+
+                // Increase the chunk count after reading a chunk
+                CurrentChunk++;
+
+                var content = new MultipartFormDataContent();
+                content.Add(new ByteArrayContent(buffer, 0, bytesRead), "file", fileName);
+
                 using var chunkContent = new ByteArrayContent(buffer, 0, bytesRead);
                 chunkContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
 
                 content.Add(chunkContent, "chunk", fileName);
                 content.Add(new StringContent(fileName), "fileName");
-                content.Add(new StringContent(chunkNumber.ToString()), "chunkNumber");
+                content.Add(new StringContent(CurrentChunk.ToString()), "chunkNumber");
 
                 try
                 {
@@ -113,12 +133,10 @@ namespace VoiceVault.Maui.Services
                     // Handle exception (e.g., notify user, retry logic)
                 }
 
+                // Update counters
                 _bytesUploaded += bytesRead;
-
-                // Update progress
-                Progress = ((double)_bytesUploaded / _fileSize);
-                ProgressChanged?.Invoke(this, EventArgs.Empty);
-
+                SaveUploadedBytes(fileName, _bytesUploaded);
+                Progress = (double)_bytesUploaded / _fileSize;
             }
 
             _stopwatch.Stop();
@@ -141,10 +159,10 @@ namespace VoiceVault.Maui.Services
 
                 while (_bytesUploaded < _fileSize)
                 {
-                    if (_isPaused)
+                    // Stay in loop until resume is called
+                    while (_isPaused)
                     {
-                        await Task.Delay(100); // Wait for resume
-                        continue;
+                        await Task.Delay(100);
                     }
 
                     var buffer = new byte[_chunkSize];

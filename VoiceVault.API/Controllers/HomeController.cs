@@ -15,7 +15,7 @@ namespace VoiceVaultAPI.Controllers
                 </head>
                 <body>
                     <h1>Welcome to VoiceVault API</h1>
-                    <p>Use the following endpoints to interact with the API:</p>
+                    <p>Use the following endpoints to interact with testing the API:</p>
                     <ul>
                         <li>POST /api/upload - Upload a file chunk</li>
                         <li>POST /api/complete - Complete the file upload</li>

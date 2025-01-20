@@ -10,6 +10,12 @@ namespace VoiceVaultAPI.Controllers
     public class VoiceVaultController : ControllerBase
     {
             private static readonly ConcurrentDictionary<string, MemoryStream> FileStreams = new ConcurrentDictionary<string, MemoryStream>();
+            private readonly ILogger<VoiceVaultController> _logger;
+
+            public VoiceVaultController(ILogger<VoiceVaultController> logger)
+            {
+                _logger = logger;
+            }
 
             /// <summary>
             /// Uploads a chunk of a file.
@@ -21,8 +27,13 @@ namespace VoiceVaultAPI.Controllers
             [HttpPost("upload")]
             public async Task<IActionResult> Upload([FromForm] IFormFile chunk, [FromForm] string fileName, [FromForm] int chunkNumber)
             {
+                _logger.LogInformation("Received chunk {Number} for file {File}, size: {Size} bytes", chunkNumber, fileName, chunk?.Length ?? 0);
+
                 if (chunk == null || chunk.Length == 0)
+                {
+                    _logger.LogWarning("No valid chunk received for file {File}", fileName);
                     return BadRequest("No chunk uploaded.");
+                }
 
                 var memoryStream = FileStreams.GetOrAdd(fileName, new MemoryStream());
 
@@ -32,6 +43,8 @@ namespace VoiceVaultAPI.Controllers
                     var chunkData = tempStream.ToArray();
                     memoryStream.Write(chunkData, 0, chunkData.Length);
                 }
+
+                _logger.LogDebug("Chunk {Number} appended to file {File} in memory", chunkNumber, fileName);
 
                 return Ok(new { chunkNumber });
             }
