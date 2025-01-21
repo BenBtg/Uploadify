@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="Uploadify.Maui.MainPage"
+    xmlns:vm="clr-namespace:Uploadify.Maui.ViewModels"
+    x:DataType="vm:MainViewModel"
+    BackgroundColor="#F9F9F9">
+
+    <ContentPage.Resources>
+        <Style x:Key="TitleLabelStyle" TargetType="Label">
+            <Setter Property="FontSize" Value="24"/>
+            <Setter Property="FontAttributes" Value="Bold"/>
+            <Setter Property="TextColor" Value="Black"/>
+            <Setter Property="HorizontalOptions" Value="Center"/>
+            <Setter Property="Margin" Value="0,20,0,0"/>
+        </Style>
+        <Style x:Key="ButtonStyle" TargetType="Button">
+            <Setter Property="BackgroundColor" Value="#007ACC"/>
+            <Setter Property="TextColor" Value="White"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="HeightRequest" Value="50"/>
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontAttributes" Value="Bold"/>
+            <Setter Property="Margin" Value="0,20,0,0"/>
+        </Style>
+        <Style x:Key="ProgressBarStyle" TargetType="ProgressBar">
+            <Setter Property="HeightRequest" Value="10"/>
+            <Setter Property="ProgressColor" Value="#007ACC"/>
+            <Setter Property="BackgroundColor" Value="#E0E0E0"/>
+            <Setter Property="Margin" Value="0,10,0,0"/>
+        </Style>
+    </ContentPage.Resources>
+
+    <StackLayout Padding="20" Spacing="10">
+        <Label Text="File Upload" Style="{StaticResource TitleLabelStyle}"/>
+
+        <Label Text="{Binding FileSizeDisplay, StringFormat='File Size: {0}'}"
+               FontSize="16" TextColor="#555"/>
+
+        <Label Text="{Binding StartTimeDisplay, StringFormat='Started at: {0}'}"
+               FontSize="16" TextColor="#555"/>
+
+        <ProgressBar Progress="{Binding Progress}"
+                     Style="{StaticResource ProgressBarStyle}"/>
+
+        <Label Text="{Binding ProgressDisplay}"
+               FontSize="16"
+               TextColor="#555"
+               HorizontalOptions="Center"/>
+
+        <Label Text="{Binding ElapsedTimeDisplay, StringFormat='Elapsed Time: {0}'}"
+               FontSize="16" TextColor="#555"/>
+
+        <Label Text="{Binding EstimatedTimeDisplay}"
+               FontSize="16" TextColor="#555"/>
+
+        <Label Text="{Binding CurrentChunk, StringFormat='Current Chunk: {0}'}"
+               FontSize="16"
+               TextColor="#555"/>
+
+        <Button Text="Upload File"
+                Command="{Binding UploadCommand}"
+                Style="{StaticResource ButtonStyle}"/>
+
+        <Button Text="{Binding PauseResumeButtonText}"
+                Command="{Binding PauseResumeCommand}"
+                Style="{StaticResource ButtonStyle}"/>
+
+                
+    </StackLayout>
+</ContentPage>
