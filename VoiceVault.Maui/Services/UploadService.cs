@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Maui.Controls;
@@ -15,7 +16,7 @@ namespace VoiceVault.Maui.Services
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl;
         private readonly string _completeUrl;
-        private readonly int _chunkSize = 1024 * 1024; // 1 MB
+        private readonly int _chunkSize = 320 * 1024; // 320 KiB (327,680 bytes)
         private double _progress;
 
         // New fields
@@ -85,64 +86,72 @@ namespace VoiceVault.Maui.Services
             if (string.IsNullOrEmpty(fileName))
                 throw new ArgumentException("File name must be provided.", nameof(fileName));
 
-            // Get total size from the stream
-            _fileSize = fileStream.Length;
+            // 1. Create upload session
+            var fileSize = fileStream.Length;
+            var createSessionUrl = $"{_httpClient.BaseAddress}api/createUploadSession?fileName={fileName}&fileSize={fileSize}";
+            var sessionResponse = await _httpClient.PostAsync(createSessionUrl, null, _cancellationTokenSource.Token);
+            sessionResponse.EnsureSuccessStatusCode();
+
+            var sessionJson = await sessionResponse.Content.ReadAsStringAsync(_cancellationTokenSource.Token);
+            var sessionData = JsonSerializer.Deserialize<CreateSessionResponse>(sessionJson);
+
+            // sessionData.uploadUrl = PUT chunk endpoint
+            // sessionData.sessionId
+            // sessionData.expirationDateTime
+
+            _fileSize = fileSize;
             _stopwatch = Stopwatch.StartNew();
-            _bytesUploaded = LoadUploadedBytes(fileName); 
+            _bytesUploaded = LoadUploadedBytes(fileName);
             _isPaused = false;
 
-            // Reset the current chunk counter before starting
-            CurrentChunk = 0;
-
+            // Move stream position to where we left off
             fileStream.Seek(_bytesUploaded, SeekOrigin.Begin);
 
-            while (_bytesUploaded < _fileSize)
+            var chunkData = new byte[_chunkSize];
+            var rangeStart = _bytesUploaded;
+            int bytesRead;
+            while ((bytesRead = await fileStream.ReadAsync(chunkData, 0, chunkData.Length, _cancellationTokenSource.Token)) > 0)
             {
-                // Stay in loop until ResumeUpload() is called 
-                while (_isPaused)
+                if (_isPaused)
                 {
-                    await Task.Delay(100);
+                    // Query the API to get the next expected range
+                    var nextRangeUrl = $"{_httpClient.BaseAddress}api/uploadChunk/{sessionData.sessionId}/nextRange";
+                    var nextRangeResponse = await _httpClient.GetAsync(nextRangeUrl, _cancellationTokenSource.Token);
+                    nextRangeResponse.EnsureSuccessStatusCode();
+
+                    var nextRangeJson = await nextRangeResponse.Content.ReadAsStringAsync(_cancellationTokenSource.Token);
+                    var nextRangeData = JsonSerializer.Deserialize<NextRangeResponse>(nextRangeJson);
+
+                    // Update the rangeStart based on the next expected range
+                    rangeStart = nextRangeData.NextExpectedRangeStart;
+                    fileStream.Seek(rangeStart, SeekOrigin.Begin);
+                    _bytesUploaded = rangeStart;
+                    _isPaused = false;
                 }
 
-                var buffer = new byte[_chunkSize];
-                var bytesRead = await fileStream.ReadAsync(buffer, 0, buffer.Length, _cancellationTokenSource.Token);
-                if (bytesRead == 0)
-                    break;
+                var rangeEnd = rangeStart + bytesRead - 1;
 
-                // Increase the chunk count after reading a chunk
-                CurrentChunk++;
+                // 2. Upload a chunk with PUT
+                var chunkEndpoint = $"{_httpClient.BaseAddress}api/uploadChunk/{sessionData.sessionId}?rangeStart={rangeStart}&rangeEnd={rangeEnd}";
+                using var content = new MultipartFormDataContent();
+                content.Add(new ByteArrayContent(chunkData, 0, bytesRead), "chunk", fileName);
 
-                var content = new MultipartFormDataContent();
-                content.Add(new ByteArrayContent(buffer, 0, bytesRead), "file", fileName);
+                var response = await _httpClient.PutAsync(chunkEndpoint, content, _cancellationTokenSource.Token);
+                if (!response.IsSuccessStatusCode)
+                    throw new Exception($"Chunk upload failed: {response.StatusCode}");
 
-                using var chunkContent = new ByteArrayContent(buffer, 0, bytesRead);
-                chunkContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/octet-stream");
-
-                content.Add(chunkContent, "chunk", fileName);
-                content.Add(new StringContent(fileName), "fileName");
-                content.Add(new StringContent(CurrentChunk.ToString()), "chunkNumber");
-
-                try
-                {
-                    var response = await _httpClient.PostAsync(_apiUrl, content);
-                    response.EnsureSuccessStatusCode();
-                }
-                 catch (Exception ex)
-                {
-                    Debug.WriteLine($"Upload failed: {ex.Message}");
-                    // Handle exception (e.g., notify user, retry logic)
-                }
-
-                // Update counters
                 _bytesUploaded += bytesRead;
                 SaveUploadedBytes(fileName, _bytesUploaded);
                 Progress = (double)_bytesUploaded / _fileSize;
+
+                rangeStart += bytesRead;
             }
 
             _stopwatch.Stop();
 
-            // Notify the server that the upload is complete
-            var completeResponse = await _httpClient.PostAsync(_completeUrl, new StringContent(fileName));
+            // 3. Complete upload session
+            var completeUrl = $"{_httpClient.BaseAddress}api/completeUpload/{sessionData.sessionId}";
+            var completeResponse = await _httpClient.PostAsync(completeUrl, null, _cancellationTokenSource.Token);
             completeResponse.EnsureSuccessStatusCode();
         }
 
@@ -228,5 +237,11 @@ namespace VoiceVault.Maui.Services
         {
             return $"upload_{Path.GetFileName(filePath)}_bytesUploaded";
         }
+
+        // Minimal DTO to parse the session JSON response
+        private record CreateSessionResponse(string uploadUrl, DateTime expirationDateTime, string sessionId);
+
+        // DTO to parse the next expected range JSON response
+        private record NextRangeResponse(long NextExpectedRangeStart);
     }
 }
