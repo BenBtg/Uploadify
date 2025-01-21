@@ -44,6 +44,23 @@ namespace VoiceVault.Maui.Services
             _apiUrl = "api/upload";
             _completeUrl = "api/complete";
             _cancellationTokenSource = new CancellationTokenSource();
+            _stopwatch = new Stopwatch();
+            ProgressChanged = delegate { };
+        }
+        {
+            _httpClient = httpClient;
+
+            // Determine the API base URL based on the platform
+        #if ANDROID
+            var baseAddress = "http://10.0.2.2:5171/";
+        #else
+            var baseAddress = "http://10.0.0.188:5171/";
+        #endif
+
+            _httpClient.BaseAddress = new Uri(baseAddress);
+            _apiUrl = "api/upload";
+            _completeUrl = "api/complete";
+            _cancellationTokenSource = new CancellationTokenSource();
         }
 
         public double Progress
@@ -153,47 +170,6 @@ namespace VoiceVault.Maui.Services
             var completeUrl = $"{_httpClient.BaseAddress}api/completeUpload/{sessionData.sessionId}";
             var completeResponse = await _httpClient.PostAsync(completeUrl, null, _cancellationTokenSource.Token);
             completeResponse.EnsureSuccessStatusCode();
-        }
-
-        public async Task UploadFileAsync(string filePath)
-        {
-            _fileSize = new FileInfo(filePath).Length;
-            _stopwatch = Stopwatch.StartNew();
-            _bytesUploaded = LoadUploadedBytes(filePath);
-            _isPaused = false;
-
-            using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
-            {
-                fileStream.Seek(_bytesUploaded, SeekOrigin.Begin);
-
-                while (_bytesUploaded < _fileSize)
-                {
-                    // Stay in loop until resume is called
-                    while (_isPaused)
-                    {
-                        await Task.Delay(100);
-                    }
-
-                    var buffer = new byte[_chunkSize];
-                    var bytesRead = await fileStream.ReadAsync(buffer, 0, buffer.Length, _cancellationTokenSource.Token);
-
-                    if (bytesRead == 0)
-                        break;
-
-                    var content = new MultipartFormDataContent();
-                    content.Add(new ByteArrayContent(buffer, 0, bytesRead), "file", Path.GetFileName(filePath));
-                    var response = await _httpClient.PostAsync(_apiUrl, content, _cancellationTokenSource.Token);
-
-                    if (!response.IsSuccessStatusCode)
-                        throw new Exception("Upload failed");
-
-                    _bytesUploaded += bytesRead;
-                    SaveUploadedBytes(filePath, _bytesUploaded);
-                    _progress = (double)_bytesUploaded / _fileSize;
-                }
-
-                _stopwatch.Stop();
-            }
         }
 
         public void PauseUpload()
