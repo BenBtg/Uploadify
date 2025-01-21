@@ -34,75 +34,21 @@ namespace Uploadify.Maui.Services
             _httpClient = httpClient;
 
             // Determine the API base URL based on the platform
-        #if ANDROID
-            var baseAddress = "http://10.0.2.2:5171/";
-        #else
-            var baseAddress = "http://10.0.0.188:5171/";
-        #endif
+            #if ANDROID
+                var baseAddress = "http://10.0.2.2:5171/";
+            #else
+                var baseAddress = "http://10.0.0.141:5171/";
+            #endif
 
             _httpClient.BaseAddress = new Uri(baseAddress);
             _apiUrl = "api/upload";
             _completeUrl = "api/complete";
             _cancellationTokenSource = new CancellationTokenSource();
             _stopwatch = new Stopwatch();
-            ProgressChanged = delegate { };
-        }
-        {
-            _httpClient = httpClient;
-
-            // Determine the API base URL based on the platform
-        #if ANDROID
-            var baseAddress = "http://10.0.2.2:5171/";
-        #else
-            var baseAddress = "http://10.0.0.188:5171/";
-        #endif
-
-            _httpClient.BaseAddress = new Uri(baseAddress);
-            _apiUrl = "api/upload";
-            _completeUrl = "api/complete";
-            _cancellationTokenSource = new CancellationTokenSource();
-        }
-
-        public double Progress
-        {
-            get => _progress;
-            private set
-            {
-                if (Math.Abs(_progress - value) > 0.01)
-                {
-                    _progress = value;
-                    ProgressChanged?.Invoke(this, EventArgs.Empty);
-                }
-            }
-        }
-
-        public event EventHandler ProgressChanged;
-
-        // New properties
-        public long FileSize => _fileSize;
-        public DateTime StartTime { get; private set; }
-        public TimeSpan ElapsedTime => _stopwatch?.Elapsed ?? TimeSpan.Zero;
-        public TimeSpan EstimatedTimeToCompletion
-        {
-            get
-            {
-                if (_bytesUploaded == 0 || _stopwatch.ElapsedMilliseconds == 0)
-                    return TimeSpan.Zero;
-
-                var totalSeconds = (_fileSize * ElapsedTime.TotalSeconds) / _bytesUploaded;
-                var remainingSeconds = totalSeconds - ElapsedTime.TotalSeconds;
-                return TimeSpan.FromSeconds(remainingSeconds);
-            }
         }
 
         public async Task UploadFileAsync(Stream fileStream, string fileName)
         {
-            if (fileStream == null)
-                throw new ArgumentNullException(nameof(fileStream));
-
-            if (string.IsNullOrEmpty(fileName))
-                throw new ArgumentException("File name must be provided.", nameof(fileName));
-
             // 1. Create upload session
             var fileSize = fileStream.Length;
             var createSessionUrl = $"{_httpClient.BaseAddress}api/createUploadSession?fileName={fileName}&fileSize={fileSize}";
@@ -187,31 +133,44 @@ namespace Uploadify.Maui.Services
             _cancellationTokenSource.Cancel();
         }
 
-        public double GetProgress()
+        public double Progress
         {
-            return _progress;
+            get => _progress;
+            private set
+            {
+                if (Math.Abs(_progress - value) > 0.01)
+                {
+                    _progress = value;
+                    ProgressChanged?.Invoke(this, EventArgs.Empty);
+                }
+            }
         }
 
-        public TimeSpan GetElapsedTime()
-        {
-            return _stopwatch.Elapsed;
-        }
+        public event EventHandler ProgressChanged;
 
-        private void SaveUploadedBytes(string filePath, long bytesUploaded)
+        // New properties
+        public long FileSize => _fileSize;
+        public DateTime StartTime { get; private set; }
+        public TimeSpan ElapsedTime => _stopwatch?.Elapsed ?? TimeSpan.Zero;
+        public TimeSpan EstimatedTimeToCompletion => Progress > 0 
+            ? TimeSpan.FromSeconds((1 - Progress) * ElapsedTime.TotalSeconds / Progress) 
+            : TimeSpan.MaxValue;
+
+        private void SaveUploadedBytes(string fileName, long bytesUploaded)
         {
-            var key = GetPreferencesKey(filePath);
+            var key = GetPreferencesKey(fileName);
             Preferences.Set(key, bytesUploaded);
         }
 
-        private long LoadUploadedBytes(string filePath)
+        private long LoadUploadedBytes(string fileName)
         {
-            var key = GetPreferencesKey(filePath);
+            var key = GetPreferencesKey(fileName);
             return Preferences.Get(key, 0L);
         }
 
-        private string GetPreferencesKey(string filePath)
+        private string GetPreferencesKey(string fileName)
         {
-            return $"upload_{Path.GetFileName(filePath)}_bytesUploaded";
+            return $"upload_{fileName}_bytesUploaded";
         }
 
         // Minimal DTO to parse the session JSON response
