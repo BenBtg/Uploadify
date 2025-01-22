@@ -2,8 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Uploadify.API.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
+    [Route("")]
     public class HomeController : ControllerBase
     {
         [HttpGet]

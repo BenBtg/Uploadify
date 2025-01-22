@@ -1,21 +1,10 @@
-using System;
 using System.Diagnostics;
-using System.IO;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Maui.Controls;
-using Microsoft.Maui.Storage;
 
 namespace Uploadify.Maui.Services
 {
     public class UploadService : IUploadService
     {
-        private readonly HttpClient _httpClient;
-        private readonly string _apiUrl;
-        private readonly string _completeUrl;
+        private readonly UploadifyApiClient _apiClient;
         private readonly int _chunkSize = 320 * 1024; // 320 KiB (327,680 bytes)
         private double _progress;
         private long _fileSize;
@@ -32,20 +21,9 @@ namespace Uploadify.Maui.Services
         // Expose current chunk as a property
         public int CurrentChunk { get; private set; }
 
-        public UploadService(HttpClient httpClient)
+        public UploadService(UploadifyApiClient apiClient)
         {
-            _httpClient = httpClient;
-
-            // Determine the API base URL based on the platform
-            #if ANDROID
-                var baseAddress = "http://10.0.2.2:5171/";
-            #else
-                var baseAddress = "http://10.0.0.141:5171/";
-            #endif
-
-            _httpClient.BaseAddress = new Uri(baseAddress);
-            _apiUrl = "api/upload";
-            _completeUrl = "api/complete";
+            _apiClient = apiClient;
             _cancellationTokenSource = new CancellationTokenSource();
             _stopwatch = new Stopwatch();
         }
@@ -54,16 +32,7 @@ namespace Uploadify.Maui.Services
         {
             // 1. Create upload session
             var fileSize = fileStream.Length;
-            var createSessionUrl = $"{_httpClient.BaseAddress}api/createUploadSession?fileName={fileName}&fileSize={fileSize}";
-            var sessionResponse = await _httpClient.PostAsync(createSessionUrl, null, _cancellationTokenSource.Token);
-            sessionResponse.EnsureSuccessStatusCode();
-
-            var sessionJson = await sessionResponse.Content.ReadAsStringAsync(_cancellationTokenSource.Token);
-            var sessionData = JsonSerializer.Deserialize<CreateSessionResponse>(sessionJson);
-
-            // sessionData.uploadUrl = PUT chunk endpoint
-            // sessionData.sessionId
-            // sessionData.expirationDateTime
+            var sessionData = await _apiClient.CreateUploadSessionAsync(fileName, fileSize);
 
             _fileSize = fileSize;
             _stopwatch = Stopwatch.StartNew();
@@ -81,15 +50,10 @@ namespace Uploadify.Maui.Services
                 if (_isPaused)
                 {
                     // Query the API to get the next expected range
-                    var nextRangeUrl = $"{_httpClient.BaseAddress}api/uploadChunk/{sessionData.sessionId}/nextRange";
-                    var nextRangeResponse = await _httpClient.GetAsync(nextRangeUrl, _cancellationTokenSource.Token);
-                    nextRangeResponse.EnsureSuccessStatusCode();
-
-                    var nextRangeJson = await nextRangeResponse.Content.ReadAsStringAsync(_cancellationTokenSource.Token);
-                    var nextRangeData = JsonSerializer.Deserialize<NextRangeResponse>(nextRangeJson);
+                    var nextRangeData = await _apiClient.GetNextExpectedRangeAsync(sessionData.sessionId);
 
                     // Update the rangeStart based on the next expected range
-                    rangeStart = nextRangeData.NextExpectedRangeStart;
+                    rangeStart = nextRangeData;
                     fileStream.Seek(rangeStart, SeekOrigin.Begin);
                     _bytesUploaded = rangeStart;
                     _isPaused = false;
@@ -97,14 +61,8 @@ namespace Uploadify.Maui.Services
 
                 var rangeEnd = rangeStart + bytesRead - 1;
 
-                // 2. Upload a chunk with PUT
-                var chunkEndpoint = $"{_httpClient.BaseAddress}api/uploadChunk/{sessionData.sessionId}?rangeStart={rangeStart}&rangeEnd={rangeEnd}";
-                using var content = new MultipartFormDataContent();
-                content.Add(new ByteArrayContent(chunkData, 0, bytesRead), "chunk", fileName);
-
-                var response = await _httpClient.PutAsync(chunkEndpoint, content, _cancellationTokenSource.Token);
-                if (!response.IsSuccessStatusCode)
-                    throw new Exception($"Chunk upload failed: {response.StatusCode}");
+                // 2. Upload a chunk
+                await _apiClient.UploadFileChunkAsync(fileStream, sessionData.sessionId, rangeStart, fileName);
 
                 _bytesUploaded += bytesRead;
                 SaveUploadedBytes(fileName, _bytesUploaded);
@@ -116,9 +74,7 @@ namespace Uploadify.Maui.Services
             _stopwatch.Stop();
 
             // 3. Complete upload session
-            var completeUrl = $"{_httpClient.BaseAddress}api/completeUpload/{sessionData.sessionId}";
-            var completeResponse = await _httpClient.PostAsync(completeUrl, null, _cancellationTokenSource.Token);
-            completeResponse.EnsureSuccessStatusCode();
+            await _apiClient.CompleteUploadAsync(sessionData.sessionId);
         }
 
         public void PauseUpload()
@@ -213,60 +169,6 @@ namespace Uploadify.Maui.Services
         private string GetPreferencesKey(string fileName)
         {
             return $"upload_{fileName}_bytesUploaded";
-        }
-
-        // Minimal DTO to parse the session JSON response
-        private record CreateSessionResponse(string uploadUrl, DateTime expirationDateTime, string sessionId);
-
-        // DTO to parse the next expected range JSON response
-        private record NextRangeResponse(long NextExpectedRangeStart);
-
-        public async Task ResumeUpload()
-        {
-            // Load persisted session ID and file name
-            var sessionId = Preferences.Get("SessionId", string.Empty);
-            var fileName = Preferences.Get("FileName", string.Empty);
-
-            if (string.IsNullOrEmpty(sessionId) || string.IsNullOrEmpty(fileName))
-            {
-                throw new InvalidOperationException("No upload session to resume.");
-            }
-
-            // Get the next expected range from the API
-            var nextRange = await GetNextExpectedRangeAsync(sessionId);
-
-            // Load the file and start uploading from the next expected range
-            using (var fileStream = File.OpenRead(fileName))
-            {
-                fileStream.Seek(nextRange, SeekOrigin.Begin);
-                await UploadFileChunkAsync(fileStream, sessionId, nextRange);
-            }
-        }
-
-        private async Task<long> GetNextExpectedRangeAsync(string sessionId)
-        {
-            // Make an API call to get the next expected range
-            var response = await _httpClient.GetStringAsync($"https://api.example.com/upload/{sessionId}/nextrange");
-            var nextRangeResponse = JsonSerializer.Deserialize<NextRangeResponse>(response);
-            return nextRangeResponse.NextExpectedRangeStart;
-        }
-
-        private async Task UploadFileChunkAsync(Stream fileStream, string sessionId, long startRange)
-        {
-            // Implement the logic to upload the file chunk starting from startRange
-            // This is a placeholder implementation
-            var buffer = new byte[8192];
-            int bytesRead;
-            while ((bytesRead = await fileStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-            {
-                // Upload the chunk to the API
-                var content = new ByteArrayContent(buffer, 0, bytesRead);
-                var response = await _httpClient.PutAsync($"https://api.example.com/upload/{sessionId}/chunk?start={startRange}", content);
-                response.EnsureSuccessStatusCode();
-
-                // Update the start range for the next chunk
-                startRange += bytesRead;
-            }
         }
     }
 }

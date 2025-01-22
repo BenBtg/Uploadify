@@ -23,6 +23,7 @@ public static class MauiProgram
     {
         //mauiAppBuilder.Services.AddTransient<ILoggingService, LoggingService>();
         mauiAppBuilder.Services.AddSingleton<HttpClient>();
+        mauiAppBuilder.Services.AddSingleton<UploadifyApiClient>();
         mauiAppBuilder.Services.AddSingleton<IUploadService, UploadService>();
 
 		#if DEBUG
