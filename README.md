@@ -1,5 +1,7 @@
 # Uploadify Repository
 
+Work in progress sample app exploring the ability to upload large files in small chunks to a specialised API.
+
 This repository contains the source code for the Uploadify project, which includes both a backend API and a cross-platform mobile application. The two most important projects in this repository are:
 
 1. **Uploadify.API**: This is the backend service that handles large file uploads using chunking. It needs to be run first using the command `dotnet run` to start the API server.
