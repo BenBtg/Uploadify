@@ -33,7 +33,7 @@ namespace UploadifyAPI.Controllers
         /// <param name="fileName">Name of file</param>
         /// <param name="fileSize">Total size, in bytes</param>
         [HttpPost("createUploadSession")]
-        public IActionResult CreateUploadSession([FromQuery] string fileName, [FromQuery] long fileSize)
+        public IActionResult CreateUploadSession([FromForm] string fileName, [FromForm] long fileSize)
         {
             var sessionId = Guid.NewGuid().ToString();
             var session = new UploadSession
@@ -100,7 +100,7 @@ namespace UploadifyAPI.Controllers
             }
 
             // Update upload session
-            session.BytesUploaded = Math.Max(session.BytesUploaded, rangeEnd + 1);
+            session.BytesUploaded = Math.max(session.BytesUploaded, rangeEnd + 1);
 
             // Return status
             return Ok(new
@@ -187,6 +187,71 @@ namespace UploadifyAPI.Controllers
             }
 
             return BadRequest("File not found.");
+        }
+
+        [HttpGet("upload/{sessionId}/nextrange")]
+        public IActionResult GetNextExpectedRange(string sessionId)
+        {
+            if (!UploadSessions.TryGetValue(sessionId, out var session))
+            {
+                return NotFound("Upload session not found.");
+            }
+
+            return Ok(new { NextExpectedRangeStart = session.BytesUploaded });
+        }
+
+        [HttpPost("upload/{sessionId}/chunk")]
+        public async Task<IActionResult> UploadChunk(string sessionId, [FromForm] IFormFile chunk, [FromForm] int chunkNumber)
+        {
+            _logger.LogInformation("Received chunk {Number} for session {SessionId}, size: {Size} bytes", chunkNumber, sessionId, chunk?.Length ?? 0);
+
+            if (chunk == null || chunk.Length == 0)
+            {
+                return BadRequest("Invalid chunk.");
+            }
+
+            if (!UploadSessions.TryGetValue(sessionId, out var session))
+            {
+                return NotFound("Upload session not found.");
+            }
+
+            using (var stream = new MemoryStream())
+            {
+                await chunk.CopyToAsync(stream);
+                session.BytesUploaded += stream.Length;
+                FileStreams[sessionId].Write(stream.ToArray(), 0, (int)stream.Length);
+            }
+
+            return Ok(new { sessionId, chunkNumber, message = "Chunk uploaded successfully." });
+        }
+
+        [HttpPost("upload/{sessionId}/complete")]
+        public IActionResult CompleteUpload(string sessionId)
+        {
+            if (!UploadSessions.TryGetValue(sessionId, out var session))
+            {
+                return NotFound("Upload session not found.");
+            }
+
+            if (session.BytesUploaded < session.FileSize)
+            {
+                _logger.LogWarning("Session {SessionId} incomplete. BytesUploaded={BytesUploaded}, FileSize={FileSize}", sessionId, session.BytesUploaded, session.FileSize);
+                return BadRequest("Upload incomplete.");
+            }
+
+            _logger.LogInformation("Completing upload session {SessionId} for file {FileName}", sessionId, session.FileName);
+
+            // Here you could save the MemoryStream to disk, database, etc.
+            // For demonstration, we just remove it from memory.
+            var stream = FileStreams[sessionId];
+            stream.Seek(0, SeekOrigin.Begin);
+            var finalData = stream.ToArray();
+
+            // Clean up resources
+            UploadSessions.TryRemove(sessionId, out _);
+            FileStreams.TryRemove(sessionId, out _);
+
+            return Ok(new { sessionId, session.FileName, session.FileSize, message = "Upload complete" });
         }
     }
 }
